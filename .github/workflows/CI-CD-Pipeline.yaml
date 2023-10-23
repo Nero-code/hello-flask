@@ -1,0 +1,61 @@
+name: CI BUILD
+on:
+  pull_request:
+    branches:
+    - main
+jobs:
+  build:
+    name: BUILD
+    runs-on: ubunut-latest
+    container: python3.9-slim
+
+    steps:
+    - name: Checkout
+      uses: Checkout@v3
+
+    - name: Install dependency
+      run: |
+        python3 -m pip install --upgrade pip wheel
+        pip install -r requirments.txt
+
+    - name: Lint with flake8
+      run: |
+          flake8 service --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 service --count --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test with nose
+      run: nosetests
+
+
+---
+
+
+name: CD DEPLOY
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+on:
+  push:
+    branches:
+    - main
+jobs:
+  Deploy-Production:
+    name: Deploy Api to Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+        
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        
+    

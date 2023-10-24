@@ -1,14 +1,19 @@
-FROM python:3.9-slim
+# syntax=docker/dockerfile:1.4
+FROM --platform=$BUILDPLATFORM python:3.10-alpine
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-COPY templates/ ./templates/
-COPY static/ ./static/
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-RUN useradd --uid 1000 api && chown -R api /app
-USER api
+# install the requirements
+COPY requirements.txt /app
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install -r requirements.txt
 
-EXPOSE 5000
-CMD ["gunicorn", "--bind=0.0.0.0:5000", "--log-level=info", "service:app"]
+COPY . .
+
+EXPOSE 5000/tcp
+
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "app:app"]
